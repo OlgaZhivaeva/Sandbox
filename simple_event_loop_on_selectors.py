@@ -1,5 +1,5 @@
 import selectors
-import socket
+import sockets
 
 selector = selectors.DefaultSelector()
 
