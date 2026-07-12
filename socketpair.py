@@ -1,6 +1,6 @@
 import multiprocessing
 import os
-import sockets
+import socket
 
 
 def child_worker(child_sock):
