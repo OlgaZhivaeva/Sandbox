@@ -18,7 +18,7 @@ def broadcast(msg: str, sender_conn, clients: dict):
             except ConnectionError:
                 pass
 
-def selector_server():
+def select_server():
     serv_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serv_sock.bind(('127.0.0.1', 8000))
@@ -76,4 +76,4 @@ def selector_server():
 
 
 if __name__ == '__main__':
-    selector_server()
+    select_server()

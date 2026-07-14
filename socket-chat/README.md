@@ -52,7 +52,7 @@ TCP-сервер, обслуживающий несколько клиентов
 
 Запустите сервер
 ```shell
-python selector-server.py
+python select-server.py
 ```
 
 В других терминалах подключитесь к нему с помощью `telnet`
