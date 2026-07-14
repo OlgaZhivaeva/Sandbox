@@ -60,7 +60,7 @@ def selector_server():
         conn.setblocking(False)
         clients[conn] = addr
         buffers[conn] = b''
-        conn.send(f'Welcome to the chat! Your port: {addr[1]}\r\n'.encode())
+        conn.sendall(f'Welcome to the chat! Your port: {addr[1]}. To exit, enter /quit\r\n'.encode())
         chat_msg = f'Client {addr[1]} connected\r\n'
         broadcast(chat_msg, conn)
         logger.info(f'Подключился клиент {addr[1]}')
