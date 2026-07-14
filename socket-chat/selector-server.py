@@ -27,7 +27,11 @@ def selector_server():
 
     def read_client(conn):
         """Событие на сокете клиента = пришли данные"""
-        data = conn.recv(1024)
+        try:
+            data = conn.recv(1024)
+        except ConnectionError:
+            disconnect_client(conn)
+            return
         if not data:
             disconnect_client(conn)
             return
@@ -41,6 +45,8 @@ def selector_server():
             for message in messages:
                 clean_msg = message.rstrip(b'\r')
                 text = clean_msg.decode('utf-8', errors='replace')
+                if len(text) > 100:
+                    text = text[:100] + "..."
 
                 sender_port = clients[conn][1]
                 logger.info(f'[{sender_port}]: {text}')
@@ -55,7 +61,6 @@ def selector_server():
         clients[conn] = addr
         buffers[conn] = b''
         conn.send(f'Welcome to the chat! Your port: {addr[1]}\r\n'.encode())
-        logger.info(f'Welcome to the chat! Your port: {addr[1]}')
         chat_msg = f'Client {addr[1]} connected\r\n'
         broadcast(chat_msg, conn)
         logger.info(f'Подключился клиент {addr[1]}')
