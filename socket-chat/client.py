@@ -20,7 +20,7 @@ def receive_messages(client_socket):
 
                 for message in messages:
                     print(f"\r{message.decode(errors='replace')}")
-                print("> ", end="", flush=True)
+                    print("> ", end="", flush=True)
     except (KeyboardInterrupt, SystemExit, ConnectionError, OSError):
         pass
     finally:
@@ -47,7 +47,12 @@ def start_client():
     print("=== Добро пожаловать в Python Chat ===")
     username = input("Введите ваше имя: ").strip()
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect(('127.0.0.1', 8000))
+    try:
+        client_socket.connect(('127.0.0.1', 8000))
+    except (SystemExit, ConnectionError, OSError) as e:
+        print(f'Подключение не установлено,проверьте запущен ли сервер.')
+        client_socket.close()
+        sys.exit()
 
     receive_thread = threading.Thread(target=receive_messages, args=(client_socket,), daemon=True)
     receive_thread.start()

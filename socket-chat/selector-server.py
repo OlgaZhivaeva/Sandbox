@@ -45,13 +45,16 @@ def selector_server():
             for message in messages:
                 clean_msg = message.rstrip(b'\r')
                 text = clean_msg.decode('utf-8', errors='replace')
+                if text.strip() == '/quit':
+                    disconnect_client(conn)
+                    return
                 if len(text) > 100:
                     text = text[:100] + "..."
 
                 sender_port = clients[conn][1]
-                logger.info(f'[{sender_port}]: {text}')
+                logger.info(f'[{sender_port}] {text}')
 
-                chat_msg = f'[{sender_port}]: {text}\r\n'
+                chat_msg = f'[{sender_port}] {text}\r\n'
                 broadcast(chat_msg, conn)
 
     def accept_client(serv_socket):
