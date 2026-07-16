@@ -12,21 +12,29 @@ logger.addHandler(logging.StreamHandler(stream=sys.stdout))
 def selector_server():
     selector = selectors.DefaultSelector()
     clients = {}
-    buffers = {}
+    read_buffers = {}
+    outgoing_buffers = {}
 
     def disconnect_client(conn):
-        """Событие на сокете клиента = клиент отключился"""
+        """Закрывает соединение, чистит буферы и убирает из селектора."""
+        if conn not in clients:
+            return
         addr = clients[conn]
         chat_msg = f'Client {addr[1]} disconnected\r\n'
-        broadcast(chat_msg, conn)
+        broadcast(chat_msg.encode(), conn)
         logger.info(f'Клиент {addr[1]} отключился')
-        selector.unregister(conn)
+
+        try:
+            selector.unregister(conn)
+        except KeyError:
+            pass
         conn.close()
-        buffers.pop(conn)
-        clients.pop(conn)
+        clients.pop(conn, None)
+        read_buffers.pop(conn, None)
+        outgoing_buffers.pop(conn, None)
 
     def read_client(conn):
-        """Событие на сокете клиента = пришли данные"""
+        """Читает данные из сокета и формирует сообщения."""
         try:
             data = conn.recv(1024)
         except ConnectionError:
@@ -36,11 +44,11 @@ def selector_server():
             disconnect_client(conn)
             return
 
-        buffers[conn] += data
-        if b'\n' in buffers[conn]:
-            parts = buffers[conn].split(b'\n')
+        read_buffers[conn] += data
+        if b'\n' in read_buffers[conn]:
+            parts = read_buffers[conn].split(b'\n')
             messages = parts[:-1]
-            buffers[conn] = parts[-1]
+            read_buffers[conn] = parts[-1]
 
             for message in messages:
                 clean_msg = message.rstrip(b'\r')
@@ -55,35 +63,70 @@ def selector_server():
                 logger.info(f'[{sender_port}] {text}')
 
                 chat_msg = f'[{sender_port}] {text}\r\n'
-                broadcast(chat_msg, conn)
+                broadcast(chat_msg.encode(), conn)
+
+    def write_client(conn):
+        """Отправляет накопленные данные клиенту."""
+        buffer = outgoing_buffers.get(conn)
+        if not buffer:
+            return
+
+        try:
+            sent = conn.send(buffer)
+            del buffer[:sent]
+
+            if len(buffer) == 0:
+                selector.modify(conn, selectors.EVENT_READ, handle_client)
+        except ConnectionError:
+            disconnect_client(conn)
+
+    def handle_client(conn, mask):
+        """Определяет какое событие произошло на сокете."""
+        if mask & selectors.EVENT_READ:
+            read_client(conn)
+        if mask & selectors.EVENT_WRITE:
+            write_client(conn)
 
     def accept_client(serv_socket):
-        """Событие на слушающем сокете = новый клиент"""
+        """Принимает новое подключение."""
         conn, addr = serv_socket.accept()
         conn.setblocking(False)
         clients[conn] = addr
-        buffers[conn] = b''
-        conn.sendall(f'Welcome to the chat! Your port: {addr[1]}. To exit, enter /quit\r\n'.encode())
-        chat_msg = f'Client {addr[1]} connected\r\n'
-        broadcast(chat_msg, conn)
-        logger.info(f'Подключился клиент {addr[1]}')
-        selector.register(conn, selectors.EVENT_READ, read_client)
+        read_buffers[conn] = bytearray()
+        outgoing_buffers[conn] = bytearray()
 
-    def broadcast(msg: str, sender_conn):
+        selector.register(conn, selectors.EVENT_READ, handle_client)
+
+        welcome_msg = f'Welcome to the chat! Your port: {addr[1]}. To exit, enter /quit\r\n'
+        add_to_send(conn, welcome_msg.encode())
+
+        chat_msg = f'Client {addr[1]} connected\r\n'
+        broadcast(chat_msg.encode(), conn)
+        logger.info(f'Подключился клиент {addr[1]}')
+
+    def add_to_send(conn, data: bytes):
+        """Добавляет данные в буфер отправки клиента и активирует EVENT_WRITE."""
+        if conn not in outgoing_buffers:
+            return
+
+        was_empty = len(outgoing_buffers[conn]) == 0
+        outgoing_buffers[conn] += data
+
+        if was_empty:
+            selector.modify(conn, selectors.EVENT_READ | selectors.EVENT_WRITE, handle_client)
+
+    def broadcast(msg_bytes, sender_conn):
         """Рассылает сообщение всем, кроме отправителя."""
         for client_conn in list(clients.keys()):
             if client_conn != sender_conn:
-                try:
-                    client_conn.send(msg.encode())
-                except ConnectionError:
-                    pass
+                add_to_send(client_conn, msg_bytes)
 
     serv_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serv_sock.bind(('127.0.0.1', 8000))
     serv_sock.listen()
     serv_sock.setblocking(False)
-    selector.register(serv_sock, selectors.EVENT_READ, accept_client)
+    selector.register(serv_sock, selectors.EVENT_READ, lambda sock, mask: accept_client(sock))
     logger.info('Сервер слушает 127.0.0.1:8000...')
 
     try:
@@ -91,20 +134,29 @@ def selector_server():
             events = selector.select(timeout=1)
             for key, mask in events:
                 callback = key.data
-                callback(key.fileobj)
+                callback(key.fileobj, mask)
     except KeyboardInterrupt:
         logger.info('Сервер останавливается пользователем...')
     finally:
         logger.info('Корректное закрытие ресурсов...')
-        for conn in clients:
+        for conn in list(clients.keys()):
             addr = clients[conn]
             logger.info(f'Закрываем соединение с клиентом {addr[1]}')
-            conn.send('Server has shut down\r\n'.encode())
-            selector.unregister(conn)
+            try:
+                conn.send('Server has shut down\r\n'.encode())
+            except ConnectionError:
+                pass
+            try:
+                selector.unregister(conn)
+            except KeyError:
+                pass
             conn.close()
 
         logger.info("Закрываем слушающий сокет сервера...")
-        selector.unregister(serv_sock)
+        try:
+            selector.unregister(serv_sock)
+        except KeyError:
+            pass
         serv_sock.close()
         selector.close()
         logger.info("Сервер полностью остановлен.")
