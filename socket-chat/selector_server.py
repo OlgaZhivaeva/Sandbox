@@ -74,7 +74,7 @@ def selector_server():
         for client_conn in list(clients.keys()):
             if client_conn != sender_conn:
                 try:
-                    client_conn.send(msg.encode())
+                    client_conn.sendall(msg.encode())
                 except ConnectionError:
                     pass
 
@@ -99,7 +99,7 @@ def selector_server():
         for conn in clients:
             addr = clients[conn]
             logger.info(f'Закрываем соединение с клиентом {addr[1]}')
-            conn.send('Server has shut down\r\n'.encode())
+            conn.sendall('Server has shut down\r\n'.encode())
             selector.unregister(conn)
             conn.close()
 

@@ -9,12 +9,12 @@ logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler(stream=sys.stdout))
 
 
-def broadcast(msg: str, sender_conn, clients: dict):
+def broadcast(msg: bytes, sender_conn, clients: dict):
     """Рассылает сообщение всем, кроме отправителя."""
     for client_conn in clients:
         if client_conn != sender_conn:
             try:
-                client_conn.send(msg.encode())
+                client_conn.sendall(msg)
             except ConnectionError:
                 pass
 
@@ -39,9 +39,10 @@ def select_server():
                 clients[conn] = addr
                 buffers[conn] = b''
                 socks_for_read.append(conn)
-                conn.send(f'Welcome to the chat! Your port: {addr[1]}\r\n'.encode())
+                welcome_msg = f'Welcome to the chat! Your port: {addr[1]}\r\n'.encode()
+                conn.sendall(welcome_msg)
                 logger.info(f'Welcome to the chat! Your port: {addr[1]}')
-                chat_msg = f'Client {addr[1]} connected\r\n'
+                chat_msg = f'Client {addr[1]} connected\r\n'.encode()
                 broadcast(chat_msg, conn, clients)
                 logger.info(f'Подключился клиент {addr[1]}')
                 continue
