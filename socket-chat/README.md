@@ -14,7 +14,7 @@
 
 Запустите сервер
 ```shell
-python blocking-server.py
+python blocking_server.py
 ```
 
 В другом терминале подключитесь к нему с помощью `telnet`
@@ -53,7 +53,7 @@ TCP-сервер, обслуживающий несколько клиентов
 
 Запустите сервер
 ```shell
-python select-server.py
+python select_server.py
 ```
 
 В других терминалах подключитесь к нему с помощью `telnet`
@@ -95,7 +95,7 @@ TCP-сервер, способный одновременно обслужива
 
 Запустите сервер
 ```shell
-python selector-server.py
+python selector_server.py
 ```
 В других терминалах запустите клиентскую программу
 ```shell
