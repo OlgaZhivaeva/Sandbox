@@ -95,7 +95,7 @@ TCP-сервер, способный одновременно обслужива
 
 Запустите сервер
 ```shell
-python selector_server.py
+python selector_server_with_out_buff.py
 ```
 В других терминалах запустите клиентскую программу
 ```shell
