@@ -143,7 +143,7 @@ def selector_server():
             addr = clients[conn]
             logger.info(f'Закрываем соединение с клиентом {addr[1]}')
             try:
-                conn.send('Server has shut down\r\n'.encode())
+                conn.sendall('Server has shut down\r\n'.encode())
             except ConnectionError:
                 pass
             try:
