@@ -144,7 +144,7 @@ def selector_server():
             logger.info(f'Закрываем соединение с клиентом {addr[1]}')
             try:
                 conn.sendall('Server has shut down\r\n'.encode())
-            except ConnectionError:
+            except OSError:
                 pass
             try:
                 selector.unregister(conn)

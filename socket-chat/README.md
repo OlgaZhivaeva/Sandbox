@@ -179,7 +179,7 @@ read_client или accept_client). Это удобно, потому что пр
 не потеряется и не будет обрезано в процессе сетевой передачи.
 
 Файл `selector_server.py` содержит реализацию только входного буфера. Файл `selector_server_with_out_buff.py` содержит 
-реализацию и входного и выходного буферов. Файлы `selector_server_oop.py` и `selector_server_with_out_buff_oop.py` реализуют ООП-варианты 
+реализацию и входного и выходного буферов. Файлы `selector_server_oop.py` и `selector_server_with_out_buffer_oop.py` реализуют ООП-варианты 
 сервера чата на базе selectors.
 
 
